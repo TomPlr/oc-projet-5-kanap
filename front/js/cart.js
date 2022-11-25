@@ -8,6 +8,14 @@ let quantityInputs;
 let quantityInputsArray;
 
 let deleteItemElements;
+let cart;
+
+function displayOrderButton() {
+  if (cart == '' || cart == null || cart == []) {
+    console.log('test');
+    document.getElementById('order').style.visibility = 'hidden';
+  }
+}
 
 const getCart = () => {
   const data = localStorage.getItem('kanap');
@@ -18,35 +26,21 @@ const getCart = () => {
   }
 };
 
+cart = getCart();
+
 // Add article
-async function displayCart() {
-  let cart = getCart();
-  cart.forEach(async (element) => {
+function displayCart() {
+  cart = getCart();
+  cart.forEach((element) => {
     let id = element.id;
     let color = element.color;
     let quantity = element.quantity;
 
-    await fetch(apiProducts + id)
+    fetch(apiProducts + id)
       .then((res) => res.json())
       .then((kanap) => {
         addArticle(kanap, color, quantity);
       });
-
-    quantityInputs = document.getElementsByClassName('itemQuantity');
-    deleteItemElements = document.getElementsByClassName('deleteItem');
-
-    let deleteButton = document.querySelectorAll('.deleteItem');
-    console.log(deleteButton);
-    deleteButton.forEach((el) => {
-      el.addEventListener('click', () => {
-        let parent = el.closest('article');
-        let idTest = el.closest('article').getAttribute('data-id');
-        let colorTest = el.closest('article').getAttribute('data-color');
-
-        console.log(parent);
-        deleteKanapTEST(parent, idTest, colorTest);
-      });
-    });
   });
 }
 
@@ -109,7 +103,7 @@ function addArticle(kanap, color, quantity) {
   divContentSettingsDelete.innerHTML = ` <p class="deleteItem">Supprimer</p>`;
 }
 
-async function getTotal() {
+function getTotal() {
   let totaleQte = 0;
   let totalPrice = 0;
   let cart = getCart();
@@ -118,7 +112,7 @@ async function getTotal() {
   totalPriceAmount.textContent = totalPrice;
 
   for (let product of cart) {
-    await fetch(apiProducts + product.id)
+    fetch(apiProducts + product.id)
       .then((res) => res.json())
       .then((kanap) => {
         totaleQte += parseInt(product.quantity);
@@ -129,13 +123,14 @@ async function getTotal() {
   }
 }
 
-async function updateQuantity() {
-  // setTimeout(() => {
+function updateQuantity() {
   let itemId;
   let itemColor;
 
+  quantityInputs = document.getElementsByClassName('itemQuantity');
   quantityInputsArray = [...quantityInputs];
-  quantityInputsArray.forEach(async (item) => {
+
+  quantityInputsArray.forEach((item) => {
     item.addEventListener('change', (e) => {
       let cart = getCart();
       itemId = item.closest('article').getAttribute('data-id');
@@ -150,61 +145,148 @@ async function updateQuantity() {
       getTotal();
     });
   });
-  // }, 500);
 }
 
-// function deleteKanap() {
-//   // setTimeout(() => {
-//   let itemId;
-//   let itemColor;
+function deleteKanap() {
+  let itemId;
+  let itemColor;
 
-//   const deleteItemElementsArray = [...deleteItemElements];
+  const deleteItemElements = document.getElementsByClassName('deleteItem');
+  const deleteItemElementsArray = [...deleteItemElements];
+  console.log(deleteItemElementsArray);
 
-//   deleteItemElementsArray.forEach((element) => {
-//     element.addEventListener('click', () => {
-//       let cart = getCart();
-//       itemId = element.closest('article').getAttribute('data-id');
-//       itemColor = element.closest('article').getAttribute('data-color');
+  deleteItemElementsArray.forEach((element) => {
+    element.addEventListener('click', () => {
+      let cart = getCart();
+      itemId = element.closest('article').getAttribute('data-id');
+      itemColor = element.closest('article').getAttribute('data-color');
 
-//       const cartIndex = cart.findIndex(
-//         (item) => item.id === itemId && item.color === itemColor
-//       );
+      const cartIndex = cart.findIndex(
+        (item) => item.id === itemId && item.color === itemColor
+      );
 
-//       if (cart.length > 1) {
-//         cart.splice(cartIndex, 1);
-//         localStorage.setItem('kanap', JSON.stringify(cart));
-//         element.closest('article').remove();
-//       } else {
-//         localStorage.removeItem('kanap');
-//         element.closest('article').remove();
-//       }
-//       getTotal();
-//     });
-//   });
-//   // }, 500);
-// }
-
-function deleteKanapTEST(el, id, color) {
-  let cart = getCart();
-  const cartIndex = cart.findIndex(
-    (item) => item.id === id && item.color === color
-  );
-
-  if (cart.length > 1) {
-    cart.splice(cartIndex, 1);
-    localStorage.setItem('kanap', JSON.stringify(cart));
-    el.closest('article').remove();
-  } else {
-    localStorage.removeItem('kanap');
-    el.closest('article').remove();
-  }
-  getTotal();
+      if (cart.length > 1) {
+        cart.splice(cartIndex, 1);
+        localStorage.setItem('kanap', JSON.stringify(cart));
+        element.closest('article').remove();
+      } else {
+        localStorage.removeItem('kanap');
+        element.closest('article').remove();
+        document.getElementById('order').style.visibility = 'hidden';
+      }
+      getTotal();
+      console.log(cart);
+    });
+  });
 }
 
 displayCart();
-
 getTotal();
 
-deleteKanap();
+window.addEventListener('load', () => {
+  updateQuantity();
+  deleteKanap();
+});
 
-updateQuantity();
+// **************************************************************
+
+const form = document.querySelector('.cart__order__form');
+
+const NAME_REGEX = /^[a-zA-Z-éèàùêçëâï]+[ -]?[a-zA-Z-éèàùêçëâï]+$/;
+const ADDRESS_REGEX = /^[\w\s-']+$/;
+const EMAIL_REGEX = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+
+const elements = form.elements;
+
+const fieldsValidation = {
+  firstName: null,
+  lastName: null,
+  address: null,
+  city: null,
+  email: null,
+};
+
+if (cart == '') {
+  document.getElementById('order').style.visibility = 'hidden';
+}
+
+for (let element of elements) {
+  element.addEventListener('input', (e) => {
+    const itemsNames = {
+      firstName: 'prénom',
+      lastName: 'nom',
+      address: 'adresse',
+      city: 'ville',
+      email: 'email',
+    };
+
+    if (e.target.value.trim() === '') {
+      element.nextElementSibling.textContent = 'Champ vide !';
+      element.style.border = '3px solid red';
+    } else {
+      if (
+        element.name == 'firstName' ||
+        element.name == 'lastName' ||
+        element.name == 'city'
+      ) {
+        if (!NAME_REGEX.test(e.target.value)) {
+          element.nextElementSibling.textContent = `Veuillez entrer un(e) ${
+            itemsNames[element.name]
+          } correct !`;
+          element.style.border = '3px solid red';
+          fieldsValidation[element.name] = false;
+        } else {
+          element.style.border = '3px solid green';
+          element.nextElementSibling.textContent = '';
+          fieldsValidation[element.name] = true;
+        }
+      }
+
+      if (element.name == 'email') {
+        if (!EMAIL_REGEX.test(e.target.value)) {
+          element.nextElementSibling.textContent = `Veuillez entrer un ${
+            itemsNames[element.name]
+          } correct !`;
+          element.style.border = '3px solid red';
+          fieldsValidation[element.name] = false;
+        } else {
+          element.style.border = '3px solid green';
+          element.nextElementSibling.textContent = '';
+          fieldsValidation[element.name] = true;
+        }
+      }
+
+      if (element.name == 'address') {
+        if (!ADDRESS_REGEX.test(e.target.value)) {
+          element.nextElementSibling.textContent = `Veuillez entrer une ${
+            itemsNames[element.name]
+          } correcte !`;
+          element.style.border = '3px solid red';
+          fieldsValidation[element.name] = false;
+        } else {
+          element.style.border = '3px solid green';
+          element.nextElementSibling.textContent = '';
+          fieldsValidation[element.name] = true;
+        }
+      }
+    }
+  });
+}
+console.log(cart);
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const isFormValid = Object.values(fieldsValidation).every(
+    (formField) => formField === true
+  );
+  console.log(fieldsValidation);
+  console.log(isFormValid);
+
+  let contact = {};
+
+  const formData = new FormData(form);
+  for (let [key, value] of formData) {
+    contact[key] = value;
+  }
+  console.log(contact);
+});
