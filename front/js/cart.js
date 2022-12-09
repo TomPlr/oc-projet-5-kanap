@@ -4,6 +4,9 @@ const cartItems = document.getElementById('cart__items');
 const totalQuantity = document.getElementById('totalQuantity');
 const totalPriceAmount = document.getElementById('totalPrice');
 
+const orderButton = document.getElementById('order');
+const cartAndFormContainer = document.getElementById('cartAndFormContainer');
+
 let quantityInputs;
 let quantityInputsArray;
 
@@ -11,10 +14,16 @@ let deleteItemElements;
 let cart;
 
 function displayOrderButton() {
-  if (cart == '' || cart == null || cart == []) {
-    console.log('test');
-    document.getElementById('order').style.visibility = 'hidden';
-  }
+  orderButton.style = `background-color: grey
+    `;
+  orderButton.addEventListener('mouseover', () => {
+    orderButton.style = `box-shadow: none;
+     cursor: default;
+     background-color: grey;
+     pointer-events: none`;
+  });
+  cartAndFormContainer.firstElementChild.textContent =
+    'Votre panier est vide 😢';
 }
 
 const getCart = () => {
@@ -92,6 +101,12 @@ function addArticle(kanap, color, quantity) {
   <p>Qté :</p>
   <input type="number" class="itemQuantity" name="itemQuantity" min="1" max="100" value="${quantity}">`;
 
+  divContentSettingsQuantity
+    .querySelector('.itemQuantity')
+    .addEventListener('click', (e) => {
+      updateQuantity(kanap._id, color, e.target.value);
+    });
+
   // Add cartArticle content settings delete
 
   const divContentSettingsDelete = document.createElement('div');
@@ -101,6 +116,12 @@ function addArticle(kanap, color, quantity) {
     'cart__item__content__settings__delete'
   );
   divContentSettingsDelete.innerHTML = ` <p class="deleteItem">Supprimer</p>`;
+
+  divContentSettingsDelete
+    .querySelector('.deleteItem')
+    .addEventListener('click', () => {
+      deleteKanap(kanap._id, color, cartArticle);
+    });
 }
 
 function getTotal() {
@@ -115,7 +136,7 @@ function getTotal() {
     fetch(apiProducts + product.id)
       .then((res) => res.json())
       .then((kanap) => {
-        totaleQte += parseInt(product.quantity);
+        totaleQte += Number(product.quantity);
         totalPrice += kanap.price * product.quantity;
         totalQuantity.textContent = totaleQte;
         totalPriceAmount.textContent = totalPrice;
@@ -123,70 +144,39 @@ function getTotal() {
   }
 }
 
-function updateQuantity() {
-  let itemId;
-  let itemColor;
+function updateQuantity(id, color, value) {
+  let cart = getCart();
 
-  quantityInputs = document.getElementsByClassName('itemQuantity');
-  quantityInputsArray = [...quantityInputs];
-
-  quantityInputsArray.forEach((item) => {
-    item.addEventListener('change', (e) => {
-      let cart = getCart();
-      itemId = item.closest('article').getAttribute('data-id');
-      itemColor = item.closest('article').getAttribute('data-color');
-
-      for (let kanap of cart) {
-        if (kanap.id === itemId && kanap.color === itemColor) {
-          kanap.quantity = parseInt(e.target.value);
-        }
-      }
-      localStorage.setItem('kanap', JSON.stringify(cart));
-      getTotal();
-    });
-  });
+  for (let kanap of cart) {
+    if (kanap.id === id && kanap.color === color) {
+      kanap.quantity = Number(value);
+    }
+  }
+  localStorage.setItem('kanap', JSON.stringify(cart));
+  getTotal();
 }
 
-function deleteKanap() {
-  let itemId;
-  let itemColor;
+function deleteKanap(id, color, target) {
+  let cart = getCart();
 
-  const deleteItemElements = document.getElementsByClassName('deleteItem');
-  const deleteItemElementsArray = [...deleteItemElements];
-  console.log(deleteItemElementsArray);
+  const cartIndex = cart.findIndex(
+    (item) => item.id === id && item.color === color
+  );
 
-  deleteItemElementsArray.forEach((element) => {
-    element.addEventListener('click', () => {
-      let cart = getCart();
-      itemId = element.closest('article').getAttribute('data-id');
-      itemColor = element.closest('article').getAttribute('data-color');
-
-      const cartIndex = cart.findIndex(
-        (item) => item.id === itemId && item.color === itemColor
-      );
-
-      if (cart.length > 1) {
-        cart.splice(cartIndex, 1);
-        localStorage.setItem('kanap', JSON.stringify(cart));
-        element.closest('article').remove();
-      } else {
-        localStorage.removeItem('kanap');
-        element.closest('article').remove();
-        document.getElementById('order').style.visibility = 'hidden';
-      }
-      getTotal();
-      console.log(cart);
-    });
-  });
+  if (cart.length > 1) {
+    cart.splice(cartIndex, 1);
+    localStorage.setItem('kanap', JSON.stringify(cart));
+    target.remove();
+  } else {
+    localStorage.removeItem('kanap');
+    target.remove();
+    displayOrderButton();
+  }
+  getTotal();
 }
 
 displayCart();
 getTotal();
-
-window.addEventListener('load', () => {
-  updateQuantity();
-  deleteKanap();
-});
 
 // **************************************************************
 
@@ -207,7 +197,7 @@ const fieldsValidation = {
 };
 
 if (cart == '') {
-  document.getElementById('order').style.visibility = 'hidden';
+  displayOrderButton();
 }
 
 for (let element of elements) {
@@ -272,21 +262,41 @@ for (let element of elements) {
     }
   });
 }
-console.log(cart);
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
+
   const isFormValid = Object.values(fieldsValidation).every(
     (formField) => formField === true
   );
-  console.log(fieldsValidation);
-  console.log(isFormValid);
 
-  let contact = {};
+  if (isFormValid) {
+    let contact = {};
+    let products = [];
 
-  const formData = new FormData(form);
-  for (let [key, value] of formData) {
-    contact[key] = value;
+    for (const element of cart) {
+      products = [...products, element.id];
+    }
+
+    const formData = new FormData(form);
+    for (let [key, value] of formData) {
+      contact[key] = value;
+    }
+    let data = { contact, products };
+
+    fetch('http://localhost:3000/api/products/order', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+
+      body: JSON.stringify(data),
+    })
+      .then((res) => res.json())
+      .then((response) => {
+        localStorage.removeItem('kanap');
+        window.location.href = `./confirmation.html?orderId=${response.orderId}`;
+      });
   }
-  console.log(contact);
 });

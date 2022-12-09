@@ -15,6 +15,10 @@ const quantity = document.getElementById('quantity');
 
 const addToCartButton = document.getElementById('addToCart');
 
+fetch(apiById)
+  .then((response) => response.json())
+  .then((kanap) => displaySelectedKanap(kanap));
+
 function displaySelectedKanap(kanap) {
   // Add image
   imageItem.appendChild(image);
@@ -49,13 +53,14 @@ const getCart = () => {
 
 function saveKanapSelected() {
   let cart = getCart();
-  let kanapQuantity = parseInt(quantity.value);
+  let kanapQuantity = Number(quantity.value);
   let sameProduct = false;
-  const kanapData = {};
 
-  kanapData.id = kanapId;
-  kanapData.color = colors.value;
-  kanapData.quantity = kanapQuantity;
+  const kanapData = {
+    id: kanapId,
+    color: colors.value,
+    quantity: kanapQuantity,
+  };
 
   if (colors.value === '') {
     notyf.error('Veuillez choisir une couleur');
@@ -77,10 +82,6 @@ function saveKanapSelected() {
     notyf.success('Produit ajouté au panier !');
   }
 }
-
-fetch(apiById)
-  .then((response) => response.json())
-  .then((kanap) => displaySelectedKanap(kanap));
 
 addToCartButton.addEventListener('click', () => {
   saveKanapSelected();
